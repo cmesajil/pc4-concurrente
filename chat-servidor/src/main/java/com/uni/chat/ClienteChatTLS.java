@@ -20,10 +20,9 @@ public class ClienteChatTLS {
         int puerto = 8888;
 
         // El cliente necesita el certificado público del servidor para confiar en él
-        String rutaCertificadoPublico = Paths.get(
-            System.getProperty("user.home"),
-            "trust_container_root.p12"
-        ).toString();
+        String rutaCertificadoPublico = Paths.get("trust_container_root.p12")
+            .toAbsolutePath()
+            .toString();
         char[] passwordCert = "container-password".toCharArray();
 
         try {

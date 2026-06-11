@@ -14,10 +14,9 @@ public class ServidorChatTLS {
 
     public static void main(String[] args) {
         int puerto = 8888;
-        String rutaPkcs12 = Paths.get(
-            System.getProperty("user.home"),
-            "container_root.p12"
-        ).toString(); // Tu contenedor PKCS12
+        String rutaPkcs12 = Paths.get("container_root.p12")
+            .toAbsolutePath()
+            .toString(); // Tu contenedor PKCS12
         char[] password = "container-password".toCharArray();
 
         try {

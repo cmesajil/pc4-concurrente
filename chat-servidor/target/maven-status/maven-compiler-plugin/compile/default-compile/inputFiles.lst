@@ -1,4 +1,4 @@
-/home/mcg/Escritorio/pc4-messenger/chat-servidor/src/main/java/com/uni/chat/ClienteChatTLS.java
-/home/mcg/Escritorio/pc4-messenger/chat-servidor/src/main/java/com/uni/dto/Mensaje.java
-/home/mcg/Escritorio/pc4-messenger/chat-servidor/src/main/java/com/uni/service/ClientHandler.java
-/home/mcg/Escritorio/pc4-messenger/chat-servidor/src/main/java/com/uni/service/ServidorChatTLS.java
+/home/mcg/Escritorio/pc4-concurrente/chat-servidor/src/main/java/com/uni/chat/ClienteChatTLS.java
+/home/mcg/Escritorio/pc4-concurrente/chat-servidor/src/main/java/com/uni/dto/Mensaje.java
+/home/mcg/Escritorio/pc4-concurrente/chat-servidor/src/main/java/com/uni/service/ClientHandler.java
+/home/mcg/Escritorio/pc4-concurrente/chat-servidor/src/main/java/com/uni/service/ServidorChatTLS.java
