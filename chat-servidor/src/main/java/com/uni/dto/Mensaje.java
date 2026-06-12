@@ -11,6 +11,14 @@ public class Mensaje implements Serializable {
     private String contenidoTexto; // Para los mensajes normales
     private byte[] archivoBytes; // Para los bytes de la imagen/archivo
     private String nombreArchivo; // Ej: "foto.png"
+    private String qrToken;
+
+    // Constructor para solicitar Registro o hacer Login
+    public Mensaje(String tipo, String remitente, String qrToken) {
+        this.tipo = tipo;
+        this.remitente = remitente;
+        this.qrToken = qrToken;
+    }
 
     // Constructor para Texto
     public Mensaje(String remitente, String contenidoTexto) {
@@ -46,6 +54,10 @@ public class Mensaje implements Serializable {
 
     public byte[] getArchivoBytes() {
         return archivoBytes;
+    }
+
+    public String getQrToken() {
+        return qrToken;
     }
 
     public String getNombreArchivo() {

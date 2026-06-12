@@ -33,9 +33,12 @@ CREATE TABLE usuarios (
 -- 2. Tabla de Salas de Chat (para conectar a los usuarios)
 CREATE TABLE salas (
     id SERIAL PRIMARY KEY,
+    qr_token VARCHAR(255) UNIQUE,
     nombre VARCHAR(100) DEFAULT 'Chat Privado', -- Útil si luego agregas grupos
     creada_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+
 );
+
 
 -- Tabla intermedia para saber qué usuarios pertenecen a qué chats (Muchos a Muchos)
 CREATE TABLE participantes_sala (

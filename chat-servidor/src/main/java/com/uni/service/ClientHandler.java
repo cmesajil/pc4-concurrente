@@ -1,6 +1,7 @@
 package com.uni.service;
 
 import com.uni.dto.Mensaje;
+import com.uni.util.DatabaseConnection;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -17,6 +18,8 @@ public class ClientHandler implements Runnable {
     private Socket socket;
     private ObjectInputStream input;
     private ObjectOutputStream output;
+    private int usuarioId;
+    private String qrToken;
     private String nombreUsuario;
 
     public ClientHandler(Socket socket) {
@@ -36,65 +39,145 @@ public class ClientHandler implements Runnable {
     @Override
     public void run() {
         try {
-            while (socket.isConnected()) {
-                // Se queda esperando (bloqueado) hasta que el cliente envíe un objeto Mensaje
-                Mensaje mensajeRecibido = (Mensaje) input.readObject();
+            // 1. LEER EL PRIMER MENSAJE (Petición de Conexión)
+            Mensaje solicitudInical = (Mensaje) input.readObject();
 
-                if (this.nombreUsuario == null) {
-                    this.nombreUsuario = mensajeRecibido.getRemitente();
+            if ("REGISTRO".equals(solicitudInical.getTipo())) {
+                // El cliente se conectó a ciegas: le generamos su QR en la BD
+                this.nombreUsuario = solicitudInical.getRemitente();
+
+                // Forzamos la creación en Postgres
+                this.qrToken = DatabaseConnection.crearNuevoUsuario(
+                    this.nombreUsuario
+                );
+                this.usuarioId = DatabaseConnection.autenticarPorToken(
+                    this.qrToken
+                );
+
+                System.out.println(
+                    "[REGISTRO] Nuevo usuario creado en Postgres. ID: " +
+                        usuarioId +
+                        " | QR: " +
+                        qrToken
+                );
+
+                // Le entregamos su QR de vuelta inmediatamente por el canal de comunicación
+                Mensaje respuestaQR = new Mensaje(
+                    "ENTREGA_QR",
+                    "SERVIDOR",
+                    this.qrToken
+                );
+                output.writeObject(respuestaQR);
+                output.flush();
+
+                // Ahora que su estado en base de datos es correcto, lo sumamos al chat general
+                clientesConectados.add(this);
+            } else if ("LOGIN".equals(solicitudInical.getTipo())) {
+                // Lógica para cuando el cliente ya tenga un QR guardado y quiera recuperarse
+                this.qrToken = solicitudInical.getQrToken();
+                this.usuarioId = DatabaseConnection.autenticarPorToken(
+                    this.qrToken
+                );
+
+                if (this.usuarioId == -1) {
                     System.out.println(
-                        "[SERVIDOR] " +
-                            nombreUsuario +
-                            " se ha conectado de forma segura."
+                        "[LOGIN RECHAZADO] El token QR enviado no existe."
                     );
+                    output.writeObject(
+                        new Mensaje(
+                            "TEXTO",
+                            "SERVIDOR",
+                            "ERROR: Token QR inválido."
+                        )
+                    );
+                    cerrarTodo();
+                    return;
                 }
 
+                this.nombreUsuario = solicitudInical.getRemitente();
+                System.out.println(
+                    "[LOGIN OK] Usuario recuperado con éxito. ID: " + usuarioId
+                );
+
+                clientesConectados.add(this);
+            } else {
+                // Si manda un mensaje común sin presentarse, lo pateamos por seguridad
+                System.out.println("[ERROR] Intento de conexión malformado.");
+                cerrarTodo();
+                return;
+            }
+
+            // 2. BUCLE DEL CHAT EN VIVO
+            while (socket.isConnected()) {
+                Mensaje mensajeRecibido = (Mensaje) input.readObject();
                 if ("TEXTO".equals(mensajeRecibido.getTipo())) {
                     System.out.println(
                         "[" +
-                            mensajeRecibido.getRemitente() +
+                            nombreUsuario +
                             "]: " +
                             mensajeRecibido.getContenidoTexto()
                     );
                     retransmitirMensaje(mensajeRecibido);
-                } else if ("ARCHIVO".equals(mensajeRecibido.getTipo())) {
-                    System.out.println(
-                        "[SERVIDOR] Recibiendo archivo de " +
-                            mensajeRecibido.getRemitente() +
-                            ": " +
-                            mensajeRecibido.getNombreArchivo()
-                    );
-
-                    // Opción: Guardar el archivo en el disco del servidor
-                    guardarArchivoEnServidor(mensajeRecibido);
-
-                    // Opcional: Retransmitir el archivo a los demás usuarios de la sala
-                    retransmitirMensaje(mensajeRecibido);
                 }
             }
         } catch (IOException | ClassNotFoundException e) {
-            // Ocurre cuando el cliente se desconecta
-            System.out.println(
-                "[SERVIDOR] " +
-                    (nombreUsuario != null ? nombreUsuario : "Un cliente") +
-                    " se ha desconectado."
-            );
+            System.out.println("[SERVIDOR] Un cliente se ha desconectado.");
         } finally {
-            cerrarTodo();
+            cerrarTodoSilencioso();
         }
     }
 
-    // Envía el mensaje a absolutamente todos los clientes conectados, excepto a quien lo envió
+    // Envía el mensaje a todos los clientes conectados de forma segura
     private void retransmitirMensaje(Mensaje mensaje) {
         for (ClientHandler cliente : clientesConectados) {
-            try {
-                if (cliente != this) {
-                    cliente.output.writeObject(mensaje);
-                    cliente.output.flush();
+            if (cliente != this) {
+                try {
+                    // Verificamos que el socket esté realmente activo antes de escribirle
+                    if (
+                        cliente.socket != null &&
+                        !cliente.socket.isClosed() &&
+                        cliente.socket.isConnected()
+                    ) {
+                        cliente.output.writeObject(mensaje);
+                        cliente.output.flush();
+                    } else {
+                        // Si el socket ya estaba muerto de antemano, lo removemos
+                        clientesConectados.remove(cliente);
+                    }
+                } catch (IOException e) {
+                    // Si falla al escribir en vivo, lo limpiamos de inmediato
+                    System.out.println(
+                        "[SISTEMA] Limpiando conexión remota perdida de un usuario."
+                    );
+                    cliente.cerrarTodoSilencioso();
                 }
-            } catch (IOException e) {
-                cliente.cerrarTodo();
             }
+        }
+    }
+
+    // Reemplaza tu antiguo cerrarTodo por esta versión segura para entornos TLS
+    public void cerrarTodoSilencioso() {
+        clientesConectados.remove(this);
+
+        // Cerramos los streams de forma independiente y capturando errores por separado
+        try {
+            if (input != null) input.close();
+        } catch (IOException e) {
+            /* Ignorar si ya está cerrado */
+        }
+
+        try {
+            if (output != null) output.close();
+        } catch (IOException e) {
+            /* Ignorar si ya está cerrado */
+        }
+
+        try {
+            if (socket != null && !socket.isClosed()) {
+                socket.close();
+            }
+        } catch (IOException e) {
+            /* Ignorar si ya está cerrado */
         }
     }
 

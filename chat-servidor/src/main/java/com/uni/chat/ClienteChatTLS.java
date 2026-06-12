@@ -74,15 +74,47 @@ public class ClienteChatTLS {
                 socket.getInputStream()
             );
 
-            //Para enviar texto:
-            out.writeObject(new Mensaje("Juan", "¡Hola a todos!"));
-            Scanner sc = new Scanner(System.in);
+            // 1. HILO PARA ESCUCHAR AL SERVIDOR (Importante para recibir el QR)
+            new Thread(() -> {
+                try {
+                    while (true) {
+                        Mensaje deServidor = (Mensaje) in.readObject();
 
+                        if ("ENTREGA_QR".equals(deServidor.getTipo())) {
+                            System.out.println(
+                                "\n[SISTEMA] ¡Usuario creado en la base de datos!"
+                            );
+                            System.out.println(
+                                "[SISTEMA] Tu token QR generado es: " +
+                                    deServidor.getQrToken()
+                            );
+                            System.out.println(
+                                "--------------------------------------------------"
+                            );
+                        } else if ("TEXTO".equals(deServidor.getTipo())) {
+                            System.out.println(
+                                "\n[" +
+                                    deServidor.getRemitente() +
+                                    "]: " +
+                                    deServidor.getContenidoTexto()
+                            );
+                        }
+                    }
+                } catch (Exception e) {
+                    System.out.println("Conexión con el servidor cerrada.");
+                }
+            }).start();
+
+            // 2. ENVIAR PETICIÓN DE CONEXIÓN INICIAL
+            // Mandamos un mensaje tipo "REGISTRO" indicando que somos un cliente nuevo conectándose.
+            out.writeObject(new Mensaje("REGISTRO", "Anonimo", null));
+            out.flush();
+
+            // 3. BUCLE PARA CHATEAR NORMAL
+            Scanner sc = new Scanner(System.in);
             while (true) {
                 String texto = sc.nextLine();
-
-                out.writeObject(new Mensaje("Juan", texto));
-
+                out.writeObject(new Mensaje("Anonimo", texto));
                 out.flush();
             }
 
