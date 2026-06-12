@@ -1,4 +1,9 @@
+com/uni/dto/UsuarioDTO.class
+com/uni/dto/MensajeHistorialDTO.class
 com/uni/service/ServidorChatTLS.class
-com/uni/service/ClientHandler.class
-com/uni/dto/Mensaje.class
+com/uni/dto/SalaDTO.class
 com/uni/chat/ClienteChatTLS.class
+com/uni/service/ClientHandler.class
+com/uni/repository/MensajeRepository.class
+com/uni/util/DatabaseConnection.class
+com/uni/dto/Mensaje.class
