@@ -67,4 +67,25 @@ public class DatabaseConnection {
         }
         return -1;
     }
+
+    public static String obtenerNombrePorId(int usuarioId) {
+        String sql = "SELECT nombre FROM usuarios WHERE id = ?";
+        try (
+            Connection conn = getConnection();
+            PreparedStatement pstmt = conn.prepareStatement(sql)
+        ) {
+            pstmt.setInt(1, usuarioId);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getString("nombre");
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println(
+                "[ERROR DB] No se pudo obtener el nombre del usuario: " +
+                    e.getMessage()
+            );
+        }
+        return null;
+    }
 }

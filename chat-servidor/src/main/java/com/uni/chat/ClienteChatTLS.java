@@ -33,10 +33,8 @@ public class ClienteChatTLS {
                 System.out.println("Entradas truststore: " + trustStore.size());
 
                 java.util.Enumeration<String> aliases = trustStore.aliases();
-
                 while (aliases.hasMoreElements()) {
                     String alias = aliases.nextElement();
-
                     System.out.println(
                         "Alias: " +
                             alias +
@@ -63,10 +61,9 @@ public class ClienteChatTLS {
             SSLSocket socket = (SSLSocket) ssf.createSocket(host, puerto);
 
             socket.startHandshake();
-
             System.out.println("TLS OK");
 
-            // En el cliente, tras conectar el SSLSocket:
+            // Streams de comunicación serializada
             ObjectOutputStream out = new ObjectOutputStream(
                 socket.getOutputStream()
             );
@@ -74,7 +71,7 @@ public class ClienteChatTLS {
                 socket.getInputStream()
             );
 
-            // 1. HILO PARA ESCUCHAR AL SERVIDOR (Queda igual, maneja la recepción)
+            // 1. HILO PARA ESCUCHAR AL SERVIDOR
             new Thread(() -> {
                 try {
                     while (true) {
@@ -105,7 +102,7 @@ public class ClienteChatTLS {
                 }
             }).start();
 
-            // 2. MENÚ INICIAL DE SELECCIÓN (Antes de entrar al bucle de chat)
+            // 2. MENÚ INICIAL DE SELECCIÓN
             Scanner sc = new Scanner(System.in);
 
             System.out.println("=== BIENVENIDO AL SISTEMA DE MENSAJERÍA ===");
@@ -117,51 +114,55 @@ public class ClienteChatTLS {
             Mensaje solicitudInicial = null;
 
             if (opcion == 1) {
-                // Flujo de Registro a ciegas
-                // El constructor de Mensaje asume: Mensaje(String tipo, String remitente, String contenido)
-                solicitudInicial = new Mensaje("REGISTRO", "Anonimo", null);
+                System.out.print(
+                    "Ingrese su nombre de usuario para registrarse: "
+                );
+                String nombreIngresado = sc.nextLine();
+
+                System.out.print(
+                    "Escanee/Ingrese el token QR de la SALA a la que desea unirse: "
+                );
+                String tokenSala = sc.nextLine();
+
+                // Usamos el constructor de 3 argumentos que tu DTO Mensaje sí posee:
+                // public Mensaje(String tipo, String remitente, String contenido)
+                solicitudInicial = new Mensaje(
+                    "REGISTRO",
+                    nombreIngresado,
+                    null
+                );
+                solicitudInicial.setQrSalaToken(tokenSala);
             } else {
-                // Flujo de Login
+                // Flujo de Login existente
                 System.out.print("Ingrese su token QR de usuario: ");
                 String qrUsuario = sc.nextLine();
+
+                System.out.print(
+                    "Escanee/Ingrese el token QR de la SALA a la que desea unirse: "
+                );
+                String qrSala = sc.nextLine();
+
                 solicitudInicial = new Mensaje("LOGIN", "Anonimo", null);
-                solicitudInicial.setQrToken(qrUsuario); // Asume que Mensaje tiene setQrToken
+                solicitudInicial.setQrToken(qrUsuario);
+                solicitudInicial.setQrSalaToken(qrSala);
             }
 
-            // AHORA SOLICITAMOS LA SALA (Se escanea el QR de la sala)
-            System.out.print(
-                "Escanee/Ingrese el token QR de la SALA a la que desea unirse: "
-            );
-            String qrSala = sc.nextLine();
-
-            // Seteamos el token de la sala en la solicitud inicial
-            solicitudInicial.setQrSalaToken(qrSala);
-
-            // Enviamos la presentación formal al Servidor (ClientHandler la procesará)
+            // Enviamos la solicitud de autenticación inicial (Sea REGISTRO o LOGIN)
             out.writeObject(solicitudInicial);
             out.flush();
 
             System.out.println(
-                "\n[SISTEMA] Conectado a la sala de chat. Puedes empezar a escribir..."
+                "\n[SISTEMA] Procesando solicitud... Conectando a la sala."
             );
 
-            // 3. BUCLE PARA CHATEAR NORMAL
+            // 3. BUCLE PARA CHATEAR EN VIVO
             while (true) {
                 String texto = sc.nextLine();
-                // Los mensajes subsiguientes ya no necesitan el tipo REGISTRO/LOGIN, son de tipo TEXTO por defecto
+                // Usamos el constructor de 2 argumentos para enviar los mensajes ordinarios de texto
                 Mensaje msg = new Mensaje("Anonimo", texto);
                 out.writeObject(msg);
                 out.flush();
             }
-
-            // // Para enviar una imagen:
-            // byte[] miFoto = java.nio.file.Files.readAllBytes(
-            //     java.nio.file.Paths.get("ruta/foto.jpg")
-            // );
-            // out.writeObject(new Mensaje("Juan", miFoto, "foto.jpg"));
-            // out.flush();
-
-            // Aquí puedes abrir hilos para escuchar mensajes del servidor continuamente
         } catch (Exception e) {
             e.printStackTrace();
         }

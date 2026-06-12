@@ -1,5 +1,6 @@
 package com.uni.repository;
 
+import com.uni.dto.Mensaje;
 import com.uni.dto.SalaDTO;
 import com.uni.util.DatabaseConnection;
 import java.sql.Connection;
@@ -7,6 +8,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.List;
 
 public class SalaRepositoryImpl implements SalaRepository {
 
@@ -110,5 +112,51 @@ public class SalaRepositoryImpl implements SalaRepository {
                     e.getMessage()
             );
         }
+    }
+
+    // 1. Agrega esto a tu interfaz SalaRepository:
+    // java.util.List<com.uni.dto.Mensaje> obtenerHistorial(Integer salaId);
+
+    // 2. Implementación en SalaRepositoryImpl.java:
+    @Override
+    public java.util.List<com.uni.dto.Mensaje> obtenerHistorial(
+        Integer salaId
+    ) {
+        java.util.List<com.uni.dto.Mensaje> historial =
+            new java.util.ArrayList<>();
+
+        // Consulta con INNER JOIN para traer el nombre real del remitente en lugar de solo el ID
+        String sql =
+            "SELECT u.nombre AS remitente, m.contenido " +
+            "FROM mensajes m " +
+            "INNER JOIN usuarios u ON m.remitente_id = u.id " +
+            "WHERE m.sala_id = ? " +
+            "ORDER BY m.enviado_en ASC"; // Del más viejo al más reciente
+
+        try (
+            Connection conn = DatabaseConnection.getConnection();
+            PreparedStatement pstmt = conn.prepareStatement(sql)
+        ) {
+            pstmt.setInt(1, salaId);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    String remitente = rs.getString("remitente");
+                    String contenido = rs.getString("contenido");
+
+                    // Creamos un DTO Mensaje de tipo TEXTO para enviárselo al cliente
+                    com.uni.dto.Mensaje msg = new com.uni.dto.Mensaje(
+                        "TEXTO",
+                        remitente,
+                        contenido
+                    );
+                    historial.add(msg);
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println(
+                "[ERROR DB] No se pudo cargar el historial: " + e.getMessage()
+            );
+        }
+        return historial;
     }
 }

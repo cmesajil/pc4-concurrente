@@ -4,7 +4,6 @@ import com.uni.dto.Mensaje;
 import com.uni.dto.SalaDTO;
 import com.uni.repository.SalaRepository;
 import com.uni.util.DatabaseConnection;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -30,7 +29,7 @@ public class ClientHandler implements Runnable {
     // Propiedad fundamental para saber a dónde retransmitir los mensajes
     private Integer salaId;
 
-    // Línea nueva corregida con la Opción A:
+    // Repositorio de persistencia de salas e historial
     private static final SalaRepository salaRepository =
         new com.uni.repository.SalaRepositoryImpl();
 
@@ -39,7 +38,6 @@ public class ClientHandler implements Runnable {
             this.socket = socket;
             this.output = new ObjectOutputStream(socket.getOutputStream());
             this.input = new ObjectInputStream(socket.getInputStream());
-            // Eliminamos la inserción automática a la lista global estática vieja
         } catch (IOException e) {
             cerrarTodoSilencioso();
         }
@@ -82,17 +80,28 @@ public class ClientHandler implements Runnable {
                             "ERROR: Token QR inválido."
                         )
                     );
+                    output.flush();
                     cerrarTodoSilencioso();
                     return;
                 }
-                this.nombreUsuario = solicitudInical.getRemitente();
+
+                // =========================================================================
+                // SOLUCIÓN DEL NOMBRE: Recuperamos el nombre legítimo desde PostgreSQL
+                // =========================================================================
+                this.nombreUsuario = DatabaseConnection.obtenerNombrePorId(
+                    this.usuarioId
+                );
+                if (
+                    this.nombreUsuario == null || this.nombreUsuario.isEmpty()
+                ) {
+                    this.nombreUsuario = "Usuario_" + this.usuarioId;
+                }
             } else {
                 cerrarTodoSilencioso();
                 return;
             }
 
             // 2. LOGICA DE ASIGNACIÓN A LA SALA POR QR
-            // Extraemos el QR de la sala que el cliente debió mandar en la propiedad correspondiente del mensaje
             String qrSalaToken = solicitudInical.getQrSalaToken();
 
             // Buscamos la sala asociada a ese QR en la base de datos
@@ -105,7 +114,7 @@ public class ClientHandler implements Runnable {
 
                 // GENERAMOS UN NUEVO QR ALEATORIO UNICO
                 String nuevoQrSala = java.util.UUID.randomUUID().toString();
-                String nombreNuevaSala = "Sala_" + nuevoQrSala.substring(0, 8); // Usamos los primeros 8 caracteres para el nombre
+                String nombreNuevaSala = "Sala_" + nuevoQrSala.substring(0, 8);
 
                 // Guardamos en la base de datos con el QR legítimamente nuevo
                 Integer nuevaSalaId = salaRepository.crearSala(
@@ -121,7 +130,7 @@ public class ClientHandler implements Runnable {
                         "SERVIDOR",
                         null
                     );
-                    respuestaQrSala.setQrSalaToken(nuevoQrSala); // Transportamos el nuevo token
+                    respuestaQrSala.setQrSalaToken(nuevoQrSala);
                     output.writeObject(respuestaQrSala);
                     output.flush();
                 } catch (IOException e) {
@@ -147,6 +156,33 @@ public class ClientHandler implements Runnable {
                     this.salaId
             );
 
+            // ====================================================================
+            // CARGAR Y ENVIAR EL HISTORIAL DE LA SALA AL NUEVO DISPOSITIVO
+            // ====================================================================
+            java.util.List<Mensaje> historial = salaRepository.obtenerHistorial(
+                this.salaId
+            );
+            if (!historial.isEmpty()) {
+                output.writeObject(
+                    new Mensaje(
+                        "TEXTO",
+                        "SISTEMA",
+                        "--- Cargando historial de mensajes anteriores ---"
+                    )
+                );
+                for (Mensaje msgAntiguo : historial) {
+                    output.writeObject(msgAntiguo);
+                }
+                output.writeObject(
+                    new Mensaje(
+                        "TEXTO",
+                        "SISTEMA",
+                        "-------------------------------------------------"
+                    )
+                );
+                output.flush();
+            }
+
             // 3. BUCLE DEL CHAT EN VIVO (Filtrado por Sala)
             while (socket.isConnected()) {
                 Mensaje mensajeRecibido = (Mensaje) input.readObject();
@@ -160,14 +196,16 @@ public class ClientHandler implements Runnable {
                             mensajeRecibido.getContenidoTexto()
                     );
 
-                    // ===============================================================
-                    // NUEVA LÍNEA: GUARDAR EN EL HISTORIAL DE POSTGRESQL
-                    // ===============================================================
+                    // Forzamos que el remitente del mensaje sea el nombre real recuperado, evitando 'Anonimo'
+                    mensajeRecibido.setRemitente(this.nombreUsuario);
+
+                    // GUARDAR EN EL HISTORIAL DE POSTGRESQL
                     salaRepository.guardarMensaje(
                         this.salaId,
                         this.usuarioId,
                         mensajeRecibido.getContenidoTexto()
                     );
+
                     // Retransmitir en memoria RAM a los usuarios conectados
                     retransmitirMensajeAlGrupo(mensajeRecibido);
                 }
@@ -183,7 +221,6 @@ public class ClientHandler implements Runnable {
         }
     }
 
-    // Método auxiliar encargado de inicializar listas dentro del mapa concurrente si no existen
     private static synchronized void vincularClienteASalaMemoria(
         Integer salaId,
         ClientHandler cliente
@@ -193,16 +230,13 @@ public class ClientHandler implements Runnable {
             .add(cliente);
     }
 
-    // El Broadcast ahora solo afecta a los miembros del mismo ID de grupo
     private void retransmitirMensajeAlGrupo(Mensaje mensaje) {
         CopyOnWriteArrayList<ClientHandler> miembros = salasActivas.get(
             this.salaId
         );
-
         if (miembros != null) {
             for (ClientHandler cliente : miembros) {
                 if (cliente != this) {
-                    // No nos lo enviamos a nosotros mismos
                     try {
                         if (
                             cliente.socket != null &&
@@ -223,15 +257,12 @@ public class ClientHandler implements Runnable {
     }
 
     public void cerrarTodoSilencioso() {
-        // Al desconectarse, lo removemos específicamente de su sala asignada
         if (this.salaId != null && salasActivas.containsKey(this.salaId)) {
             salasActivas.get(this.salaId).remove(this);
-            // Opcional: si la sala se queda vacía, puedes borrarla del mapa para liberar memoria
             if (salasActivas.get(this.salaId).isEmpty()) {
                 salasActivas.remove(this.salaId);
             }
         }
-
         try {
             if (input != null) input.close();
         } catch (IOException e) {}

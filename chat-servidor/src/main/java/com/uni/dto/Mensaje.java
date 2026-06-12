@@ -40,6 +40,10 @@ public class Mensaje implements Serializable {
         this.nombreArchivo = nombreArchivo;
     }
 
+    public void setRemitente(String remitente) {
+        this.remitente = remitente; // Usa el nombre exacto de tu variable global aquí (ej. emisor, usuario, etc.)
+    }
+
     // Getters
     public String getTipo() {
         return tipo;
