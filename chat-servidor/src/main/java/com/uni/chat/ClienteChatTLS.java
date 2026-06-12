@@ -74,7 +74,7 @@ public class ClienteChatTLS {
                 socket.getInputStream()
             );
 
-            // 1. HILO PARA ESCUCHAR AL SERVIDOR (Importante para recibir el QR)
+            // 1. HILO PARA ESCUCHAR AL SERVIDOR (Queda igual, maneja la recepción)
             new Thread(() -> {
                 try {
                     while (true) {
@@ -85,7 +85,7 @@ public class ClienteChatTLS {
                                 "\n[SISTEMA] ¡Usuario creado en la base de datos!"
                             );
                             System.out.println(
-                                "[SISTEMA] Tu token QR generado es: " +
+                                "[SISTEMA] Tu token QR de USUARIO es: " +
                                     deServidor.getQrToken()
                             );
                             System.out.println(
@@ -105,16 +105,52 @@ public class ClienteChatTLS {
                 }
             }).start();
 
-            // 2. ENVIAR PETICIÓN DE CONEXIÓN INICIAL
-            // Mandamos un mensaje tipo "REGISTRO" indicando que somos un cliente nuevo conectándose.
-            out.writeObject(new Mensaje("REGISTRO", "Anonimo", null));
+            // 2. MENÚ INICIAL DE SELECCIÓN (Antes de entrar al bucle de chat)
+            Scanner sc = new Scanner(System.in);
+
+            System.out.println("=== BIENVENIDO AL SISTEMA DE MENSAJERÍA ===");
+            System.out.println("1. Registrarse como usuario nuevo");
+            System.out.println("2. Iniciar sesión con QR de usuario existente");
+            System.out.print("Seleccione una opción: ");
+            int opcion = Integer.parseInt(sc.nextLine());
+
+            Mensaje solicitudInicial = null;
+
+            if (opcion == 1) {
+                // Flujo de Registro a ciegas
+                // El constructor de Mensaje asume: Mensaje(String tipo, String remitente, String contenido)
+                solicitudInicial = new Mensaje("REGISTRO", "Anonimo", null);
+            } else {
+                // Flujo de Login
+                System.out.print("Ingrese su token QR de usuario: ");
+                String qrUsuario = sc.nextLine();
+                solicitudInicial = new Mensaje("LOGIN", "Anonimo", null);
+                solicitudInicial.setQrToken(qrUsuario); // Asume que Mensaje tiene setQrToken
+            }
+
+            // AHORA SOLICITAMOS LA SALA (Se escanea el QR de la sala)
+            System.out.print(
+                "Escanee/Ingrese el token QR de la SALA a la que desea unirse: "
+            );
+            String qrSala = sc.nextLine();
+
+            // Seteamos el token de la sala en la solicitud inicial
+            solicitudInicial.setQrSalaToken(qrSala);
+
+            // Enviamos la presentación formal al Servidor (ClientHandler la procesará)
+            out.writeObject(solicitudInicial);
             out.flush();
 
+            System.out.println(
+                "\n[SISTEMA] Conectado a la sala de chat. Puedes empezar a escribir..."
+            );
+
             // 3. BUCLE PARA CHATEAR NORMAL
-            Scanner sc = new Scanner(System.in);
             while (true) {
                 String texto = sc.nextLine();
-                out.writeObject(new Mensaje("Anonimo", texto));
+                // Los mensajes subsiguientes ya no necesitan el tipo REGISTRO/LOGIN, son de tipo TEXTO por defecto
+                Mensaje msg = new Mensaje("Anonimo", texto);
+                out.writeObject(msg);
                 out.flush();
             }
 

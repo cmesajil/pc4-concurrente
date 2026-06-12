@@ -12,6 +12,7 @@ public class Mensaje implements Serializable {
     private byte[] archivoBytes; // Para los bytes de la imagen/archivo
     private String nombreArchivo; // Ej: "foto.png"
     private String qrToken;
+    private String qrSalaToken; // Token QR que escaneó/seleccionó el usuario para entrar al grupo
 
     // Constructor para solicitar Registro o hacer Login
     public Mensaje(String tipo, String remitente, String qrToken) {
@@ -60,7 +61,20 @@ public class Mensaje implements Serializable {
         return qrToken;
     }
 
+    public void setQrToken(String qrToken) {
+        this.qrToken = qrToken;
+    }
+
     public String getNombreArchivo() {
         return nombreArchivo;
+    }
+
+    // Getter y Setter correspondientes...
+    public String getQrSalaToken() {
+        return qrSalaToken;
+    }
+
+    public void setQrSalaToken(String qrSalaToken) {
+        this.qrSalaToken = qrSalaToken;
     }
 }

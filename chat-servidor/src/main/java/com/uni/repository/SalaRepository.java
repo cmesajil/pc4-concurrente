@@ -1,3 +1,5 @@
+package com.uni.repository;
+
 import com.uni.dto.SalaDTO; // O como se llame tu clase DTO de salas
 
 public interface SalaRepository {
