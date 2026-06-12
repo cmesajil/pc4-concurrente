@@ -8,4 +8,7 @@ public interface SalaRepository {
     SalaDTO buscarPorQr(String qrToken);
 
     void agregarParticipante(Integer salaId, Integer usuarioId);
+
+    // NUEVO MÉTODO PARA EL HISTORIAL
+    void guardarMensaje(Integer salaId, Integer remitenteId, String contenido);
 }

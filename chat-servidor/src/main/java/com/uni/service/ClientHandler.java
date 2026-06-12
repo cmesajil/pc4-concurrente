@@ -100,22 +100,37 @@ public class ClientHandler implements Runnable {
 
             if (sala == null) {
                 System.out.println(
-                    "[SALA] El QR no existe en la BD. Creando nueva sala de forma dinámica..."
+                    "[SALA] El token proporcionado no existe. Generando una SALA NUEVA con un QR único..."
                 );
 
-                // Controlamos el tamaño del texto para evitar errores de substring
-                String sufijo =
-                    qrSalaToken.length() > 5
-                        ? qrSalaToken.substring(0, 5)
-                        : qrSalaToken;
-                String nombreNuevaSala = "Grupo_" + sufijo;
+                // GENERAMOS UN NUEVO QR ALEATORIO UNICO
+                String nuevoQrSala = java.util.UUID.randomUUID().toString();
+                String nombreNuevaSala = "Sala_" + nuevoQrSala.substring(0, 8); // Usamos los primeros 8 caracteres para el nombre
 
+                // Guardamos en la base de datos con el QR legítimamente nuevo
                 Integer nuevaSalaId = salaRepository.crearSala(
                     nombreNuevaSala,
-                    qrSalaToken
+                    nuevoQrSala
                 );
                 this.salaId = nuevaSalaId;
+
+                // NOTIFICAMOS AL CLIENTE: Le enviamos el nuevo QR de la sala que se acaba de crear
+                try {
+                    Mensaje respuestaQrSala = new Mensaje(
+                        "ENTREGA_QR_SALA",
+                        "SERVIDOR",
+                        null
+                    );
+                    respuestaQrSala.setQrSalaToken(nuevoQrSala); // Transportamos el nuevo token
+                    output.writeObject(respuestaQrSala);
+                    output.flush();
+                } catch (IOException e) {
+                    System.err.println(
+                        "[ERROR] No se pudo enviar el nuevo QR de la sala al cliente."
+                    );
+                }
             } else {
+                System.out.println("[SALA] Sala encontrada con éxito.");
                 this.salaId = sala.getId();
             }
 
@@ -144,6 +159,16 @@ public class ClientHandler implements Runnable {
                             "]: " +
                             mensajeRecibido.getContenidoTexto()
                     );
+
+                    // ===============================================================
+                    // NUEVA LÍNEA: GUARDAR EN EL HISTORIAL DE POSTGRESQL
+                    // ===============================================================
+                    salaRepository.guardarMensaje(
+                        this.salaId,
+                        this.usuarioId,
+                        mensajeRecibido.getContenidoTexto()
+                    );
+                    // Retransmitir en memoria RAM a los usuarios conectados
                     retransmitirMensajeAlGrupo(mensajeRecibido);
                 }
             }

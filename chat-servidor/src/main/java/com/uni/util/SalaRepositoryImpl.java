@@ -85,4 +85,30 @@ public class SalaRepositoryImpl implements SalaRepository {
             );
         }
     }
+
+    @Override
+    public void guardarMensaje(
+        Integer salaId,
+        Integer remitenteId,
+        String contenido
+    ) {
+        String sql =
+            "INSERT INTO mensajes (sala_id, remitente_id, contenido) VALUES (?, ?, ?)";
+
+        try (
+            Connection conn = DatabaseConnection.getConnection();
+            PreparedStatement pstmt = conn.prepareStatement(sql)
+        ) {
+            pstmt.setInt(1, salaId);
+            pstmt.setInt(2, remitenteId);
+            pstmt.setString(3, contenido);
+
+            pstmt.executeUpdate();
+        } catch (SQLException e) {
+            System.err.println(
+                "[ERROR DB] No se pudo registrar el mensaje en el historial: " +
+                    e.getMessage()
+            );
+        }
+    }
 }
