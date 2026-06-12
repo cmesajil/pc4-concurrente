@@ -18,6 +18,7 @@ public class ClienteChatTLS {
     public static void main(String[] args) {
         String host = "localhost"; // O la IP de tu servidor
         int puerto = 8888;
+        final String[] miNombreEnPantalla = { "Tú" }; // Usamos un array de 1 elemento para poder modificarlo dentro del hilo
 
         // El cliente necesita el certificado público del servidor para confiar en él
         String rutaCertificadoPublico = Paths.get("trust_container_root.p12")
@@ -77,7 +78,10 @@ public class ClienteChatTLS {
                     while (true) {
                         Mensaje deServidor = (Mensaje) in.readObject();
 
-                        if ("ENTREGA_QR".equals(deServidor.getTipo())) {
+                        if ("CONFIGURACION".equals(deServidor.getTipo())) {
+                            // Guardamos el nombre real que nos otorgó el servidor
+                            miNombreEnPantalla[0] = deServidor.getQrToken();
+                        } else if ("ENTREGA_QR".equals(deServidor.getTipo())) {
                             System.out.println(
                                 "\n[SISTEMA] ¡Usuario creado en la base de datos!"
                             );
@@ -93,7 +97,7 @@ public class ClienteChatTLS {
                                 "\n[" +
                                     deServidor.getRemitente() +
                                     "]: " +
-                                    deServidor.getContenidoTexto()
+                                    deServidor.getQrToken()
                             );
                         }
                     }
@@ -124,8 +128,6 @@ public class ClienteChatTLS {
                 );
                 String tokenSala = sc.nextLine();
 
-                // Usamos el constructor de 3 argumentos que tu DTO Mensaje sí posee:
-                // public Mensaje(String tipo, String remitente, String contenido)
                 solicitudInicial = new Mensaje(
                     "REGISTRO",
                     nombreIngresado,
@@ -155,11 +157,15 @@ public class ClienteChatTLS {
                 "\n[SISTEMA] Procesando solicitud... Conectando a la sala."
             );
 
-            // 3. BUCLE PARA CHATEAR EN VIVO
+            // 3. BUCLE PARA CHATEAR EN VIVO (Ubicado correctamente al final)
             while (true) {
+                // Imprime el indicador en la misma línea (sin salto de línea)
+                System.out.print("[" + miNombreEnPantalla[0] + "]: ");
+
                 String texto = sc.nextLine();
-                // Usamos el constructor de 2 argumentos para enviar los mensajes ordinarios de texto
-                Mensaje msg = new Mensaje("Anonimo", texto);
+
+                // Enviamos el mensaje al servidor
+                Mensaje msg = new Mensaje("TEXTO", "Anonimo", texto);
                 out.writeObject(msg);
                 out.flush();
             }

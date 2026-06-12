@@ -100,7 +100,13 @@ public class ClientHandler implements Runnable {
                 cerrarTodoSilencioso();
                 return;
             }
-
+            // =========================================================================
+            // ENVIAR EL NOMBRE REAL CONFIRMADO AL CLIENTE
+            // =========================================================================
+            Mensaje msgConfig = new Mensaje("CONFIGURACION", "SERVIDOR", null);
+            msgConfig.setQrToken(this.nombreUsuario); // Viaja el nombre real
+            output.writeObject(msgConfig);
+            output.flush();
             // 2. LOGICA DE ASIGNACIÓN A LA SALA POR QR
             String qrSalaToken = solicitudInical.getQrSalaToken();
 
@@ -163,23 +169,23 @@ public class ClientHandler implements Runnable {
                 this.salaId
             );
             if (!historial.isEmpty()) {
-                output.writeObject(
-                    new Mensaje(
-                        "TEXTO",
-                        "SISTEMA",
-                        "--- Cargando historial de mensajes anteriores ---"
-                    )
+                // Para los mensajes informativos del sistema usamos un objeto DTO limpio
+                // asegurando que el texto viaje en la propiedad esperada por tu repositorio/cliente
+                Mensaje inicioH = new Mensaje("TEXTO", "SISTEMA", null);
+                inicioH.setQrToken(
+                    "--- Cargando historial de mensajes anteriores ---"
                 );
+                output.writeObject(inicioH);
+
                 for (Mensaje msgAntiguo : historial) {
                     output.writeObject(msgAntiguo);
                 }
-                output.writeObject(
-                    new Mensaje(
-                        "TEXTO",
-                        "SISTEMA",
-                        "-------------------------------------------------"
-                    )
+
+                Mensaje finH = new Mensaje("TEXTO", "SISTEMA", null);
+                finH.setQrToken(
+                    "-------------------------------------------------"
                 );
+                output.writeObject(finH);
                 output.flush();
             }
 
@@ -187,23 +193,26 @@ public class ClientHandler implements Runnable {
             while (socket.isConnected()) {
                 Mensaje mensajeRecibido = (Mensaje) input.readObject();
                 if ("TEXTO".equals(mensajeRecibido.getTipo())) {
+                    // Extraemos la cadena de texto que viaja en la propiedad qrToken
+                    String textoMensaje = mensajeRecibido.getQrToken();
+
                     System.out.println(
                         "[Sala " +
                             this.salaId +
                             "][" +
                             nombreUsuario +
                             "]: " +
-                            mensajeRecibido.getContenidoTexto()
+                            textoMensaje
                     );
 
-                    // Forzamos que el remitente del mensaje sea el nombre real recuperado, evitando 'Anonimo'
+                    // Forzamos que el remitente del mensaje sea el nombre real recuperado
                     mensajeRecibido.setRemitente(this.nombreUsuario);
 
                     // GUARDAR EN EL HISTORIAL DE POSTGRESQL
                     salaRepository.guardarMensaje(
                         this.salaId,
                         this.usuarioId,
-                        mensajeRecibido.getContenidoTexto()
+                        textoMensaje
                     );
 
                     // Retransmitir en memoria RAM a los usuarios conectados
