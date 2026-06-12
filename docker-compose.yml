@@ -1,0 +1,13 @@
+services:
+  postgres:
+    image: postgres:latest
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: root
+      POSTGRES_DB: postgres
+    ports:
+      - "5433:5432"
+    volumes:
+      - type: bind
+        source: ./data/postgres-init.sql
+        target: /docker-entrypoint-initdb.d/postgres-init.sql
