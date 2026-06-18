@@ -1,4 +1,4 @@
-package com.uni;
+package com.uni.chat;
 
 import static org.junit.jupiter.api.Assertions.*;
 

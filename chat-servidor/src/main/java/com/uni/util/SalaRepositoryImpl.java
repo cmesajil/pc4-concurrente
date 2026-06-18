@@ -1,4 +1,4 @@
-package com.uni.repository;
+package com.uni.util;
 
 import com.uni.dto.Mensaje;
 import com.uni.dto.SalaDTO;
@@ -9,6 +9,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.List;
+import com.uni.repository.SalaRepository;
 
 public class SalaRepositoryImpl implements SalaRepository {
 

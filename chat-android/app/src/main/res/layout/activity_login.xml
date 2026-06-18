@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:gravity="center"
+    android:padding="32dp"
+    android:background="#F0F4F8">
+
+    <!-- Título de la App -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Dog Messenger"
+        android:textSize="36sp"
+        android:textStyle="bold"
+        android:textColor="@color/dog_blue"
+        android:layout_marginBottom="48dp" />
+
+    <!-- Campo para ingresar el nombre -->
+    <EditText
+        android:id="@+id/etNombre"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Ingresa tu nombre..."
+        android:inputType="textPersonName"
+        android:padding="16dp"
+        android:background="@android:color/white"
+        android:elevation="2dp"
+        android:layout_marginBottom="24dp" />
+
+    <!-- Botón para Escanear el QR -->
+    <Button
+        android:id="@+id/btnEscanearQR"
+        android:layout_width="match_parent"
+        android:layout_height="60dp"
+        android:text="Escanear QR de Sala"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:backgroundTint="@color/dog_blue"
+        android:textColor="@android:color/white" />
+
+</LinearLayout>

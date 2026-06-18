@@ -1,8 +1,9 @@
-package com.uni.repository;
+package com.uni.util;
 
 import com.uni.dto.UsuarioDTO;
 import com.uni.util.DatabaseConnection;
 import java.sql.*;
+import com.uni.repository.*;
 
 public class UsuarioRepositoryImpl implements UsuarioRepository {
 

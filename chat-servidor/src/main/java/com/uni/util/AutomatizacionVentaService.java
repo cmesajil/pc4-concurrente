@@ -1,4 +1,4 @@
-package com.uni.service;
+package com.uni.util;
 
 import com.uni.dto.ProductoDTO;
 import com.uni.repository.VentasRepository;

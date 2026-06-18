@@ -31,7 +31,7 @@ public class ClientHandler implements Runnable {
 
     // Repositorio de persistencia de salas e historial
     private static final SalaRepository salaRepository =
-        new com.uni.repository.SalaRepositoryImpl();
+        new com.uni.util.SalaRepositoryImpl();
 
     public ClientHandler(Socket socket) {
         try {

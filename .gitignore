@@ -2,3 +2,6 @@ target/
 *.class
 .env
 
+# Entornos de desarrollo
+.idea/
+.vscode/

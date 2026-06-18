@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+    <!-- Color azul extraído de la interfaz del PDF de la práctica -->
+    <color name="dog_blue">#1D71B8</color>
+</resources>
