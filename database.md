@@ -1,9 +1,3 @@
-¡Suena como un gran proyecto! Diseñar una base de datos para un chat con arquitectura cliente-servidor es un excelente ejercicio de modelado.
-
-Para resolver lo que pides en **PostgreSQL**, necesitamos estructurar la información de forma relacional. Como quieres que se identifiquen por un código QR, la forma más limpia y eficiente de manejarlo es **guardar la cadena de texto única (un token o hash) que genera ese QR**, en lugar de guardar la imagen como tal. Cuando el cliente escanee su QR, el servidor leerá ese texto y lo buscará en la base de datos.
-
-Aquí tienes una propuesta de modelo de base de datos óptima, normalizada y lista para escalar.
-
 ## 1. El Modelo de Base de Datos (Esquema Conceptual)
 
 Necesitaremos al menos tres tablas principales:
